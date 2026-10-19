@@ -1,0 +1,46 @@
+name: Newsletter semanal
+
+on:
+  schedule:
+    # Toda sexta às 11:00 UTC (08:00 em Brasília). O GitHub pode atrasar alguns minutos.
+    - cron: "0 11 * * 5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só gerar o HTML (não enviar e-mail)"
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerar e enviar newsletter
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          REGION: BR
+          LANGUAGE: pt-BR
+        run: python newsletter.py
+
+      - name: Guardar prévia do e-mail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-html
+          path: newsletter.html
+          retention-days: 14
+          if-no-files-found: ignore
